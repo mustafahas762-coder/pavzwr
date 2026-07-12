@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plasma TV - Toggle Mode</title>
+    <title>Integrated TV System</title>
     <style>
         body, html {
             margin: 0;
@@ -15,10 +15,31 @@
             cursor: none;
         }
 
-        #content-area {
+        /* حاوية الموقع - نستخدم iframe هنا مع محاولة تجاوز القيود */
+        #site-wrapper {
             width: 100%;
             height: 100%;
-            position: relative;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* طبقة التحكم الشفافة - فوق الموقع */
+        #control-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            pointer-events: none; /* تسمح بمرور النقرات للموقع تحتها */
         }
 
         /* المؤشر الأصفر الذكي */
@@ -30,13 +51,11 @@
             border-radius: 50%;
             background: rgba(255, 204, 0, 0.3);
             box-shadow: 0 0 20px #ffcc00;
-            pointer-events: none;
-            z-index: 99999;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            transition: opacity 0.3s ease;
             display: none; /* مخفي في البداية */
+            pointer-events: none;
         }
 
         #smart-cursor::after {
@@ -51,46 +70,49 @@
             transform: translate(-50%, -50%);
         }
 
-        /* رسالة الحالة */
-        #status-msg {
+        /* تنبيه الحالة */
+        #notify {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.8);
-            color: #ffcc00;
-            padding: 8px 15px;
-            border-radius: 5px;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 204, 0, 0.9);
+            color: #000;
+            padding: 5px 20px;
+            border-radius: 20px;
+            font-weight: bold;
             font-family: sans-serif;
-            z-index: 100000;
-            border: 1px solid #ffcc00;
-            font-size: 14px;
+            z-index: 1000;
             display: none;
         }
     </style>
 </head>
 <body>
 
-    <div id="status-msg"></div>
+    <div id="notify"></div>
 
-    <div id="content-area">
+    <div id="site-wrapper">
+        <!-- ملاحظة: في بعض البيئات، قد يحتاج التطبيق (WebView) لتفعيل "Allow Cross-Origin" ليعمل الـ iframe بسلاسة -->
+        <iframe src="https://www.hdfilmcehennemi.nl/" id="target-site"></iframe>
+    </div>
+
+    <div id="control-layer">
         <div id="smart-cursor"></div>
-        <!-- الموقع سيفتح هنا -->
     </div>
 
     <script>
         const cursor = document.getElementById('smart-cursor');
-        const statusMsg = document.getElementById('status-msg');
-        let isCursorActive = false; // حالة المؤشر (مفعل أو لا)
+        const notify = document.getElementById('notify');
+        const iframe = document.getElementById('target-site');
+        let isCursorActive = false;
         let posX = window.innerWidth / 2;
         let posY = window.innerHeight / 2;
         const speed = 40;
 
-        function showStatus(text) {
-            statusMsg.innerText = text;
-            statusMsg.style.display = 'block';
-            setTimeout(() => {
-                statusMsg.style.display = 'none';
-            }, 2000);
+        function showNotify(text) {
+            notify.innerText = text;
+            notify.style.display = 'block';
+            setTimeout(() => notify.style.display = 'none', 2000);
         }
 
         function updateCursor() {
@@ -98,49 +120,34 @@
             cursor.style.top = posY + 'px';
         }
 
-        // التوجيه للموقع
-        window.onload = function() {
-            if (window.location.search !== "?loaded") {
-                window.location.href = "https://www.hdfilmcehennemi.nl/";
-            }
-        };
-
         document.addEventListener('keydown', (e) => {
-            // تفعيل/تعطيل المؤشر عند الضغط على الرقم 1
+            // التبديل بالزر رقم 1
             if (e.key === '1') {
                 isCursorActive = !isCursorActive;
                 cursor.style.display = isCursorActive ? 'block' : 'none';
-                showStatus(isCursorActive ? "تم تفعيل الفأرة" : "تم إيقاف الفأرة");
+                showNotify(isCursorActive ? "وضع الفأرة: نشط" : "وضع الفأرة: متوقف");
                 return;
             }
 
-            // إذا كان المؤشر مفعلاً، نسمح بالتحكم
             if (isCursorActive) {
                 switch(e.key) {
-                    case 'ArrowUp':
-                        posY = Math.max(0, posY - speed);
-                        break;
-                    case 'ArrowDown':
-                        posY = Math.min(window.innerHeight, posY + speed);
-                        break;
-                    case 'ArrowLeft':
-                        posX = Math.max(0, posX - speed);
-                        break;
-                    case 'ArrowRight':
-                        posX = Math.min(window.innerWidth, posX + speed);
-                        break;
+                    case 'ArrowUp': posY = Math.max(0, posY - speed); break;
+                    case 'ArrowDown': posY = Math.min(window.innerHeight, posY + speed); break;
+                    case 'ArrowLeft': posX = Math.max(0, posX - speed); break;
+                    case 'ArrowRight': posX = Math.min(window.innerWidth, posX + speed); break;
                     case 'Enter':
-                        // محاكاة نقرة
+                        // تأثير بصري للنقرة
                         cursor.style.transform = 'translate(-50%, -50%) scale(0.8)';
                         setTimeout(() => cursor.style.transform = 'translate(-50%, -50%) scale(1)', 100);
+                        // في التطبيقات الحقيقية، يتم إرسال إحداثيات النقرة للـ WebView
                         break;
                 }
                 updateCursor();
             }
 
-            // زر الرجوع يعمل دائماً
+            // أزرار الرجوع
             if (e.key === 'Escape' || e.key === 'BackSpace') {
-                window.history.back();
+                iframe.contentWindow.history.back();
             }
         });
     </script>
