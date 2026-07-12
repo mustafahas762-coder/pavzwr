@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Plasma TV Mode</title>
+    <title>Plasma TV - Toggle Mode</title>
     <style>
         body, html {
             margin: 0;
@@ -12,10 +12,9 @@
             height: 100%;
             background-color: #000;
             overflow: hidden;
-            cursor: none; /* إخفاء الماوس العادي */
+            cursor: none;
         }
 
-        /* حاوية الموقع - تملأ الشاشة بالكامل */
         #content-area {
             width: 100%;
             height: 100%;
@@ -25,25 +24,25 @@
         /* المؤشر الأصفر الذكي */
         #smart-cursor {
             position: absolute;
-            width: 40px;
-            height: 40px;
+            width: 45px;
+            height: 45px;
             border: 4px solid #ffcc00;
             border-radius: 50%;
             background: rgba(255, 204, 0, 0.3);
-            box-shadow: 0 0 15px #ffcc00;
+            box-shadow: 0 0 20px #ffcc00;
             pointer-events: none;
             z-index: 99999;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            transition: transform 0.1s ease-out;
-            display: block; /* يظهر دائماً للمساعدة في التنقل */
+            transition: opacity 0.3s ease;
+            display: none; /* مخفي في البداية */
         }
 
         #smart-cursor::after {
             content: '';
-            width: 8px;
-            height: 8px;
+            width: 10px;
+            height: 10px;
             background: #ffcc00;
             border-radius: 50%;
             position: absolute;
@@ -52,81 +51,97 @@
             transform: translate(-50%, -50%);
         }
 
-        /* رسالة توضيحية تختفي تلقائياً */
-        #init-msg {
+        /* رسالة الحالة */
+        #status-msg {
             position: fixed;
-            top: 20px;
+            bottom: 20px;
             right: 20px;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             color: #ffcc00;
-            padding: 10px 20px;
+            padding: 8px 15px;
             border-radius: 5px;
             font-family: sans-serif;
             z-index: 100000;
             border: 1px solid #ffcc00;
+            font-size: 14px;
+            display: none;
         }
     </style>
 </head>
 <body>
 
-    <div id="init-msg">وضع البلازما نشط - استخدم الأسهم للتنقل</div>
+    <div id="status-msg"></div>
 
     <div id="content-area">
         <div id="smart-cursor"></div>
-        <!-- تم استخدام window.location للتوجيه المباشر لضمان عمل الموقع وتجنب مشاكل الـ Iframe -->
+        <!-- الموقع سيفتح هنا -->
     </div>
 
     <script>
-        // إخفاء الرسالة التوضيحية بعد 4 ثوانٍ
-        setTimeout(() => {
-            document.getElementById('init-msg').style.display = 'none';
-        }, 4000);
-
-        // التحكم في المؤشر الأصفر
         const cursor = document.getElementById('smart-cursor');
+        const statusMsg = document.getElementById('status-msg');
+        let isCursorActive = false; // حالة المؤشر (مفعل أو لا)
         let posX = window.innerWidth / 2;
         let posY = window.innerHeight / 2;
         const speed = 40;
+
+        function showStatus(text) {
+            statusMsg.innerText = text;
+            statusMsg.style.display = 'block';
+            setTimeout(() => {
+                statusMsg.style.display = 'none';
+            }, 2000);
+        }
 
         function updateCursor() {
             cursor.style.left = posX + 'px';
             cursor.style.top = posY + 'px';
         }
 
-        // التوجيه للموقع المطلوب مباشرة ليعمل بكامل الشاشة
-        // سنقوم بحقن كود المؤشر داخل الموقع إذا كان التطبيق يسمح بذلك
-        // أو نفتح الموقع مباشرة كما في تطبيق APK الذي أرسلته
+        // التوجيه للموقع
         window.onload = function() {
-            // ملاحظة: التوجيه المباشر هو الطريقة التي استخدمها تطبيق APK الخاص بك
-            // لضمان أن الموقع يفتح ولا يتم حظره
             if (window.location.search !== "?loaded") {
                 window.location.href = "https://www.hdfilmcehennemi.nl/";
             }
         };
 
         document.addEventListener('keydown', (e) => {
-            switch(e.key) {
-                case 'ArrowUp':
-                    posY = Math.max(0, posY - speed);
-                    break;
-                case 'ArrowDown':
-                    posY = Math.min(window.innerHeight, posY + speed);
-                    break;
-                case 'ArrowLeft':
-                    posX = Math.max(0, posX - speed);
-                    break;
-                case 'ArrowRight':
-                    posX = Math.min(window.innerWidth, posX + speed);
-                    break;
-                case 'Enter':
-                    // في وضع التلفزيون، زر Enter يقوم بالنقرة المطلوبة
-                    break;
-                case 'Escape':
-                case 'BackSpace':
-                    window.history.back();
-                    break;
+            // تفعيل/تعطيل المؤشر عند الضغط على الرقم 1
+            if (e.key === '1') {
+                isCursorActive = !isCursorActive;
+                cursor.style.display = isCursorActive ? 'block' : 'none';
+                showStatus(isCursorActive ? "تم تفعيل الفأرة" : "تم إيقاف الفأرة");
+                return;
             }
-            updateCursor();
+
+            // إذا كان المؤشر مفعلاً، نسمح بالتحكم
+            if (isCursorActive) {
+                switch(e.key) {
+                    case 'ArrowUp':
+                        posY = Math.max(0, posY - speed);
+                        break;
+                    case 'ArrowDown':
+                        posY = Math.min(window.innerHeight, posY + speed);
+                        break;
+                    case 'ArrowLeft':
+                        posX = Math.max(0, posX - speed);
+                        break;
+                    case 'ArrowRight':
+                        posX = Math.min(window.innerWidth, posX + speed);
+                        break;
+                    case 'Enter':
+                        // محاكاة نقرة
+                        cursor.style.transform = 'translate(-50%, -50%) scale(0.8)';
+                        setTimeout(() => cursor.style.transform = 'translate(-50%, -50%) scale(1)', 100);
+                        break;
+                }
+                updateCursor();
+            }
+
+            // زر الرجوع يعمل دائماً
+            if (e.key === 'Escape' || e.key === 'BackSpace') {
+                window.history.back();
+            }
         });
     </script>
 </body>
